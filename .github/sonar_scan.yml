@@ -1,0 +1,76 @@
+# Runs a SonarQube Cloud analysis against the whole repo (single repo-wide
+# project -- see sonar-project.properties at the repo root) on every push.
+#
+# wait_for_quality_gate controls whether a failing SonarQube Cloud quality
+# gate fails this scan job. Defaults to false (advisory only); manual runs
+# can opt in to failing on a quality-gate failure.
+#
+# Requires the SonarQube Cloud project's Analysis Method to be set to
+# CI-based (Administration > Analysis Method) -- Automatic Analysis, the
+# default for new projects, rejects CI-submitted reports.
+#
+# The workflow name and environment are attached to each analysis as
+# sonar.analysis.* custom properties.
+#
+# Imports Go and Electron coverage reports when the test workflows have
+# generated them at the configured paths.
+
+name: SonarQube Cloud Scan
+
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      wait_for_quality_gate:
+        description: 'Fail this job (and everything downstream) if the SonarQube Cloud quality gate fails'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  scan:
+    name: SonarQube Cloud scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history -- SonarQube's blame/new-code analysis needs it.
+          fetch-depth: 0
+
+      - name: Resolve scanner args
+        id: scanner_args
+        run: |
+          # Sanitized to one shell-safe token -- the scan action's own
+          # script invokes sonar-scanner with this string unquoted, so a
+          # raw space (e.g. github.workflow's "App Deploy") gets word-split
+          # into a stray argument and the CLI rejects it.
+          WORKFLOW_NAME="${{ github.workflow }}"
+          WORKFLOW_NAME="${WORKFLOW_NAME// /_}"
+          # sonar.analysis.* custom properties aren't rendered anywhere in
+          # the SonarQube Cloud UI (only retrievable via the
+          # api/project_analyses/search Web API) -- sonar.buildString is
+          # the property that actually shows up per-analysis on the
+          # project's Activity page, so that's the one used for anything
+          # meant to be human-visible on the dashboard.
+          ARGS="-Dsonar.organization=${{ vars.SONAR_ORGANIZATION }} -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }} -Dsonar.qualitygate.wait=${{ inputs.wait_for_quality_gate || false }} -Dsonar.buildString=${ENVIRONMENT}-${WORKFLOW_NAME} -Dsonar.analysis.environment=$ENVIRONMENT -Dsonar.analysis.workflow=$WORKFLOW_NAME -Dsonar.go.coverage.reportPaths=backend/coverage.out -Dsonar.javascript.lcov.reportPaths=desktop/coverage/lcov.info"
+          echo "args=$ARGS" >> "$GITHUB_OUTPUT"
+
+          # No secrets in $ARGS (SONAR_TOKEN is passed separately, as the
+          # scan action's own env var, never as a -D property) -- safe to
+          # print in full. Printed here, not just left to be inferred from
+          # the report_path/dart-coverage steps above, because it's the
+          # exact string handed to sonar-scanner -- the one thing to check
+          # first if coverage is missing: confirm both test suites generated
+          # their reports at the paths configured above and that this
+          # project's analysis method is set to CI-based.
+          echo "::group::Resolved sonar-scanner arguments"
+          echo "$ARGS"
+          echo "::endgroup::"
+
+      - name: SonarQube Cloud Scan
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: ${{ steps.scanner_args.outputs.args }}
