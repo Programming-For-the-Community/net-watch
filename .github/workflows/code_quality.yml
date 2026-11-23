@@ -1,0 +1,41 @@
+# Automatic code-quality checks. Runs on every push to any branch.
+#
+# Also callable from deploy.yml, which runs it with the quality gate
+# enforced before building images. Add lint/test jobs here as the backend
+# and desktop app come together (e.g. go vet, golangci-lint, npm test);
+# sonar should then `needs:` the test jobs so coverage reports exist.
+
+name: Code Quality
+
+on:
+  push:
+  workflow_call:
+    inputs:
+      wait_for_quality_gate:
+        description: 'Fail if the SonarQube Cloud quality gate fails'
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      SONAR_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+
+# One run per branch at a time; a newer push cancels the older run.
+# Prefixed with the triggering workflow's name, so a deploy calling this
+# workflow doesn't cancel (or get cancelled by) a push-triggered run.
+concurrency:
+  group: code-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sonar:
+    name: SonarQube Cloud
+    uses: ./.github/workflows/sonar_scan.yml
+    with:
+      # Advisory on pushes; enforced when deploy.yml calls this workflow.
+      wait_for_quality_gate: ${{ inputs.wait_for_quality_gate || false }}
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

@@ -1,28 +1,132 @@
-# Entry point for CI/CD. Runs on every push to any branch.
+# Manual deploy: runs the code-quality checks with the SonarQube quality
+# gate enforced, then builds and pushes Docker images to Docker Hub.
 #
-# Currently only runs the SonarQube Cloud scan (sonar_scan.yml, a reusable
-# workflow). Build/test/deploy jobs get added here later and should
-# `needs: sonar` so they only run after the scan.
+# Trigger from Actions > App Deploy > Run workflow, choosing the branch
+# and entering a version.
+#
+# Requires:
+#   vars.DOCKERHUB_USERNAME     Docker Hub user/org that owns the repository
+#   vars.DOCKERHUB_REPOSITORY   Docker Hub repository name (default: net-watch)
+#   secrets.DOCKERHUB_TOKEN     Docker Hub access token with read/write scope
+#   secrets.SONAR_TOKEN         (used by the code-quality checks)
+#
+# All images share one Docker Hub repository; the tag prefix identifies the
+# image. Tags pushed for each image:
+#   <image>_<version>   always, for version tracking (e.g. backend_1.2.0)
+#   <image>_latest      only when run from main; this is what gets pulled
+#
+# Images are listed in the build job's matrix. An image whose Dockerfile
+# doesn't exist yet is skipped, so entries can be added ahead of time.
 
 name: App Deploy
 
 on:
-  push:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag to apply, e.g. 1.2.0'
+        required: true
+        type: string
 
 permissions:
   contents: read
 
-# One run per branch at a time; a newer push cancels the older run.
+# Never run two deploys of the same branch at once, and never cancel one
+# midway through a push.
 concurrency:
   group: deploy-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
-  sonar:
-    name: SonarQube Cloud
-    uses: ./.github/workflows/sonar_scan.yml
+  quality:
+    name: Code quality
+    uses: ./.github/workflows/code_quality.yml
     with:
-      # Advisory for now. Flip to true once deploy jobs depend on this one.
-      wait_for_quality_gate: false
+      wait_for_quality_gate: true
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  build:
+    name: Build & push ${{ matrix.image.name }}
+    needs: quality
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          # Go binary with the api / poller / migrate subcommands.
+          - name: backend
+            context: backend
+            dockerfile: backend/Dockerfile
+          # Add future images here, e.g.:
+          # - name: mcp
+          #   context: mcp
+          #   dockerfile: mcp/Dockerfile
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Validate version input
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          # Docker tags allow only [A-Za-z0-9_.-], so no '+' build metadata.
+          if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::version '$VERSION' is not a semver like 1.2.0 or 1.2.0-rc.1"
+            exit 1
+          fi
+
+      - name: Check for Dockerfile
+        id: dockerfile
+        env:
+          DOCKERFILE: ${{ matrix.image.dockerfile }}
+          IMAGE: ${{ matrix.image.name }}
+        run: |
+          if [ -f "$DOCKERFILE" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::$DOCKERFILE not found; skipping $IMAGE"
+          fi
+
+      - name: Set up QEMU
+        if: steps.dockerfile.outputs.exists == 'true'
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        if: steps.dockerfile.outputs.exists == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: steps.dockerfile.outputs.exists == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Compute tags
+        if: steps.dockerfile.outputs.exists == 'true'
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: docker.io/${{ vars.DOCKERHUB_USERNAME }}/${{ vars.DOCKERHUB_REPOSITORY || 'net-watch' }}
+          # Don't add a bare "latest" tag; it would be shared by every image.
+          flavor: |
+            latest=false
+          tags: |
+            type=raw,value=${{ matrix.image.name }}_${{ inputs.version }}
+            type=raw,value=${{ matrix.image.name }}_latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push
+        if: steps.dockerfile.outputs.exists == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.image.context }}
+          file: ${{ matrix.image.dockerfile }}
+          # amd64 for Windows/Linux, arm64 for Apple Silicon Macs.
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.image.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image.name }}

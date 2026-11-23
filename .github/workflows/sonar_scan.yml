@@ -18,8 +18,8 @@
 name: SonarQube Cloud Scan
 
 on:
-  # Invoked by deploy.yml on every push (no push trigger here, so pushes
-  # aren't scanned twice).
+  # Invoked by code_quality.yml (on every push, and from deploy.yml before
+  # building images). No push trigger here, so pushes aren't scanned twice.
   workflow_call:
     inputs:
       wait_for_quality_gate:
