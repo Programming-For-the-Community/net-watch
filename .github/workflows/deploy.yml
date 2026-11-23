@@ -1,0 +1,28 @@
+# Entry point for CI/CD. Runs on every push to any branch.
+#
+# Currently only runs the SonarQube Cloud scan (sonar_scan.yml, a reusable
+# workflow). Build/test/deploy jobs get added here later and should
+# `needs: sonar` so they only run after the scan.
+
+name: App Deploy
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+# One run per branch at a time; a newer push cancels the older run.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sonar:
+    name: SonarQube Cloud
+    uses: ./.github/workflows/sonar_scan.yml
+    with:
+      # Advisory for now. Flip to true once deploy jobs depend on this one.
+      wait_for_quality_gate: false
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

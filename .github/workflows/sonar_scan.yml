@@ -18,7 +18,18 @@
 name: SonarQube Cloud Scan
 
 on:
-  push:
+  # Invoked by deploy.yml on every push (no push trigger here, so pushes
+  # aren't scanned twice).
+  workflow_call:
+    inputs:
+      wait_for_quality_gate:
+        description: 'Fail this job (and everything downstream) if the SonarQube Cloud quality gate fails'
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      SONAR_TOKEN:
+        required: true
   workflow_dispatch:
     inputs:
       wait_for_quality_gate:
@@ -26,6 +37,9 @@ on:
         required: false
         type: boolean
         default: true
+
+permissions:
+  contents: read
 
 jobs:
   scan:
