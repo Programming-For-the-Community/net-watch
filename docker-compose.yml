@@ -1,0 +1,63 @@
+services:
+  netwatch-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-netwatch}
+      POSTGRES_USER: ${DB_USER:-netwatch}
+      POSTGRES_PASSWORD: ${DB_PWD:?Set DB_PWD in .env}
+    ports:
+      - "127.0.0.1::5432"
+    volumes:
+      - ${DATA_PATH}/data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  netwatch-db-config:
+    image: postgres:17-alpine
+    depends_on:
+      netwatch-db:
+        condition: service_healthy
+    environment:
+      PGHOST: netwatch-db
+      PGPORT: "5432"
+      PGDATABASE: ${DB_NAME:-netwatch}
+      PGUSER: ${DB_USER:-netwatch}
+      PGPASSWORD: ${DB_PWD:?Set DB_PWD in .env}
+    volumes:
+      - ./Source/DB:/db:ro
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        for f in /db/tables/*.sql /db/stored_procedures/*.sql; do
+        [ -f "$$f" ] || continue
+        psql -v ON_ERROR_STOP=1 -f "$$f"
+        done
+    restart: "no"
+
+  # graphql-api:
+  #   image: ${GRAPHQL_API_IMAGE:?Set GRAPHQL_API_IMAGE to your private image reference}
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   environment:
+  #     DATABASE_URL: postgres://${DB_USER:-netwatch}:${DB_PASSWORD:?Set DB_PASSWORD in .env}@db:5432/${DB_NAME:-netwatch}?sslmode=disable
+  #     PORT: "8080"
+  #   ports:
+  #     - "127.0.0.1:${API_PORT:-8080}:8080"
+  #   restart: unless-stopped
+
+  # mcp:
+  #   image: ${MCP_SERVER_IMAGE:?Set MCP_SERVER_IMAGE to your private image reference}
+  #   depends_on:
+  #     - graphql-api
+  #   environment:
+  #     GRAPHQL_API_URL: http://graphql-api:8080/graphql
+  #     PORT: "3001"
+  #   ports:
+  #     - "127.0.0.1:${MCP_PORT:-3001}:3001"
+  #   restart: unless-stopped
