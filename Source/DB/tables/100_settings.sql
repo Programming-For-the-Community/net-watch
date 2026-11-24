@@ -12,3 +12,9 @@ INSERT INTO settings (key, value) VALUES
     ('defaults.failure_threshold',   '3'::jsonb),
     ('defaults.recovery_threshold',  '2'::jsonb)
 ON CONFLICT (key) DO NOTHING;
+
+-- Keep updated_at current (function defined in functions/000_set_updated_at.sql)
+CREATE OR REPLACE TRIGGER settings_set_updated_at
+    BEFORE UPDATE ON settings
+    FOR EACH ROW
+    EXECUTE FUNCTION set_updated_at();

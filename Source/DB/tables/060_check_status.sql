@@ -11,3 +11,9 @@ CREATE TABLE IF NOT EXISTS check_status (
     current_incident_id    bigint      REFERENCES incidents (id) ON DELETE SET NULL,
     updated_at             timestamptz NOT NULL DEFAULT now()
 );
+
+-- Keep updated_at current (function defined in functions/000_set_updated_at.sql)
+CREATE OR REPLACE TRIGGER check_status_set_updated_at
+    BEFORE UPDATE ON check_status
+    FOR EACH ROW
+    EXECUTE FUNCTION set_updated_at();

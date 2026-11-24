@@ -33,7 +33,9 @@ services:
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - |
-        for f in /db/tables/*.sql /db/stored_procedures/*.sql; do
+        # functions first: the table files attach triggers that call them.
+        # (PL/pgSQL bodies aren't checked against tables until first call.)
+        for f in /db/functions/*.sql /db/tables/*.sql /db/stored_procedures/*.sql; do
         [ -f "$$f" ] || continue
         psql -v ON_ERROR_STOP=1 -f "$$f"
         done

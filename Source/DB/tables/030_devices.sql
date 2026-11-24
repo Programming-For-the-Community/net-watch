@@ -21,3 +21,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS devices_network_system_role_uq
 
 CREATE INDEX IF NOT EXISTS devices_mac_address_idx
     ON devices (mac_address);
+
+-- Keep updated_at current (function defined in functions/000_set_updated_at.sql)
+CREATE OR REPLACE TRIGGER devices_set_updated_at
+    BEFORE UPDATE ON devices
+    FOR EACH ROW
+    EXECUTE FUNCTION set_updated_at();

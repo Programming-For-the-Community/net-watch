@@ -15,3 +15,9 @@ CREATE TABLE IF NOT EXISTS networks (
 
     CONSTRAINT networks_fingerprint_uq UNIQUE (fingerprint)
 );
+
+-- Keep updated_at current (function defined in functions/000_set_updated_at.sql)
+CREATE OR REPLACE TRIGGER networks_set_updated_at
+    BEFORE UPDATE ON networks
+    FOR EACH ROW
+    EXECUTE FUNCTION set_updated_at();
