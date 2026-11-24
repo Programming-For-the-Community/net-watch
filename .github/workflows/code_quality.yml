@@ -33,6 +33,9 @@ concurrency:
 jobs:
   sonar:
     name: SonarQube Cloud
+    # Only main is analyzed in SonarQube Cloud; other jobs here still run
+    # on every branch.
+    if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/sonar_scan.yml
     with:
       # Advisory on pushes; enforced when deploy.yml calls this workflow.
