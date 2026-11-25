@@ -95,7 +95,10 @@ jobs:
           # the property that actually shows up per-analysis on the
           # project's Activity page, so that's the one used for anything
           # meant to be human-visible on the dashboard.
-          ARGS="-Dsonar.organization=${{ vars.SONAR_ORGANIZATION }} -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }} -Dsonar.qualitygate.wait=${{ inputs.wait_for_quality_gate || false }} -Dsonar.buildString=${WORKFLOW_NAME} -Dsonar.analysis.workflow=$WORKFLOW_NAME -Dsonar.javascript.lcov.reportPaths=desktop/coverage/lcov.info"
+          # sonar.organization/sonar.projectKey come from
+          # sonar-project.properties; passing them here as -D args would
+          # override the file.
+          ARGS="-Dsonar.qualitygate.wait=${{ inputs.wait_for_quality_gate || false }} -Dsonar.buildString=${WORKFLOW_NAME} -Dsonar.analysis.workflow=$WORKFLOW_NAME -Dsonar.javascript.lcov.reportPaths=desktop/coverage/lcov.info"
           echo "args=$ARGS" >> "$GITHUB_OUTPUT"
 
           # No secrets in $ARGS (SONAR_TOKEN is passed separately, as the
