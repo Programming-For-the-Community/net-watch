@@ -1,0 +1,49 @@
+# golangci-lint configuration for the graphql-api module.
+#   golangci-lint fmt   - format every Go file in the module
+#   golangci-lint run   - lint (also fails on unformatted files)
+version: "2"
+
+linters:
+  # errcheck, govet, ineffassign, staticcheck, unused
+  default: standard
+  enable:
+    - bodyclose     # unclosed HTTP response bodies
+    - errorlint     # use errors.Is/As and %w with wrapped errors
+    - gocritic      # common style and correctness issues
+    - misspell      # common English misspellings in comments and strings
+    - nilerr        # returning nil after checking err != nil
+    - revive        # golint successor: naming, doc comments, error strings
+    - sqlclosecheck # unclosed sql.Rows / sql.Stmt
+    - unconvert     # unnecessary type conversions
+  settings:
+    revive:
+      rules:
+        - name: error-strings
+        - name: error-naming
+        - name: error-return
+        - name: exported
+        - name: package-comments
+          disabled: true
+        - name: var-naming
+        - name: receiver-naming
+        - name: indent-error-flow
+        - name: blank-imports
+        - name: context-as-argument
+        - name: unused-parameter
+  exclusions:
+    generated: lax
+    presets:
+      - std-error-handling
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      simplify: true
+    goimports:
+      # Keep this module's imports in their own group after the standard
+      # library and third-party groups.
+      local-prefixes:
+        - github.com/Programming-For-the-Community/net-watch

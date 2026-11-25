@@ -12,8 +12,9 @@
 # The workflow name and environment are attached to each analysis as
 # sonar.analysis.* custom properties.
 #
-# Imports Go and Electron coverage reports when the test workflows have
-# generated them at the configured paths.
+# Runs the graphql-api unit tests to produce Go coverage (path set in
+# sonar-project.properties), and imports Electron coverage when the test
+# workflows have generated it at the configured path.
 
 name: SonarQube Cloud Scan
 
@@ -52,6 +53,22 @@ jobs:
           # Full history -- SonarQube's blame/new-code analysis needs it.
           fetch-depth: 0
 
+      # Coverage is generated here rather than downloaded from the Go job in
+      # code_quality.yml, so manual (workflow_dispatch) scans get it too.
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: Source/graphql-api/go.mod
+          # No go.sum yet (no third-party modules); switch this on once
+          # there is one.
+          cache: false
+
+      - name: Generate graphql-api coverage
+        working-directory: Source/graphql-api
+        # Path must match sonar.go.coverage.reportPaths in
+        # sonar-project.properties.
+        run: go test -covermode=atomic -coverprofile=coverage.out ./...
+
       - name: Resolve scanner args
         id: scanner_args
         run: |
@@ -67,7 +84,7 @@ jobs:
           # the property that actually shows up per-analysis on the
           # project's Activity page, so that's the one used for anything
           # meant to be human-visible on the dashboard.
-          ARGS="-Dsonar.organization=${{ vars.SONAR_ORGANIZATION }} -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }} -Dsonar.qualitygate.wait=${{ inputs.wait_for_quality_gate || false }} -Dsonar.buildString=${WORKFLOW_NAME} -Dsonar.analysis.workflow=$WORKFLOW_NAME -Dsonar.go.coverage.reportPaths=backend/coverage.out -Dsonar.javascript.lcov.reportPaths=desktop/coverage/lcov.info"
+          ARGS="-Dsonar.organization=${{ vars.SONAR_ORGANIZATION }} -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }} -Dsonar.qualitygate.wait=${{ inputs.wait_for_quality_gate || false }} -Dsonar.buildString=${WORKFLOW_NAME} -Dsonar.analysis.workflow=$WORKFLOW_NAME -Dsonar.javascript.lcov.reportPaths=desktop/coverage/lcov.info"
           echo "args=$ARGS" >> "$GITHUB_OUTPUT"
 
           # No secrets in $ARGS (SONAR_TOKEN is passed separately, as the

@@ -1,0 +1,19 @@
+{
+  // Go: format and organize imports on save to match
+  // Source/graphql-api/.golangci.yml (gofmt + goimports), which CI enforces.
+  "[go]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "golang.go",
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    },
+    // gofmt requires LF; .gitattributes keeps committed Go files LF too.
+    "files.eol": "\n"
+  },
+  "gopls": {
+    // Group this module's imports separately (goimports local-prefixes).
+    "formatting.local": "github.com/Programming-For-the-Community/net-watch"
+  },
+  "go.lintTool": "golangci-lint-v2",
+  "go.lintOnSave": "package"
+}
