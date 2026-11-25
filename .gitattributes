@@ -1,0 +1,5 @@
+# Go tooling (gofmt, golangci-lint) requires LF line endings, so keep Go
+# files LF in the working tree even when core.autocrlf is true on Windows.
+*.go    text eol=lf
+go.mod  text eol=lf
+go.sum  text eol=lf

@@ -1,9 +1,8 @@
 # Automatic code-quality checks. Runs on every push to any branch.
 #
 # Also callable from deploy.yml, which runs it with the quality gate
-# enforced before building images. Add lint/test jobs here as the backend
-# and desktop app come together (e.g. go vet, golangci-lint, npm test);
-# sonar should then `needs:` the test jobs so coverage reports exist.
+# enforced before building images. Add lint/test jobs here as the desktop
+# app comes together (e.g. npm test), and add them to sonar's `needs:`.
 
 name: Code Quality
 
@@ -31,10 +30,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  graphql-api:
+    name: graphql-api lint & test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Source/graphql-api
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: Source/graphql-api/go.mod
+          # No go.sum yet (no third-party modules); switch this on once
+          # there is one.
+          cache: false
+
+      # Uses Source/graphql-api/.golangci.yml; also fails on unformatted
+      # files (gofmt/goimports).
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.15
+          working-directory: Source/graphql-api
+
+      - name: Test
+        run: go test -race ./...
+
   sonar:
     name: SonarQube Cloud
     # Only main is analyzed in SonarQube Cloud; other jobs here still run
-    # on every branch.
+    # on every branch. Don't scan code that fails lint or tests.
+    needs: graphql-api
     if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/sonar_scan.yml
     with:
