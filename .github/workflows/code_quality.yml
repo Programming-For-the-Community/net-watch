@@ -61,10 +61,10 @@ jobs:
 
   sonar:
     name: SonarQube Cloud
-    # Only main is analyzed in SonarQube Cloud; other jobs here still run
-    # on every branch. Don't scan code that fails lint or tests.
+    # Every branch is analyzed (branch analysis is free for public
+    # projects). Only main's scan can fail this job -- see sonar_scan.yml.
+    # Don't scan code that fails lint or tests.
     needs: graphql-api
-    if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/sonar_scan.yml
     with:
       # Advisory on pushes; enforced when deploy.yml calls this workflow.
