@@ -67,7 +67,18 @@ jobs:
         working-directory: Source/graphql-api
         # Path must match sonar.go.coverage.reportPaths in
         # sonar-project.properties.
-        run: go test -covermode=atomic -coverprofile=coverage.out ./...
+        #
+        # go test writes file paths as module import paths
+        # (github.com/.../graphql-api/internal/...). Sonar can only match
+        # paths relative to the repo root, so rewrite the module prefix to
+        # this module's directory.
+        run: |
+          go test -covermode=atomic -coverprofile=coverage.out ./...
+          MODULE="$(go list -m)"
+          sed -i "s#^${MODULE}/#Source/graphql-api/#" coverage.out
+          echo "::group::Coverage report (first lines)"
+          head -5 coverage.out
+          echo "::endgroup::"
 
       - name: Resolve scanner args
         id: scanner_args
