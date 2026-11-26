@@ -1,5 +1,11 @@
 package statemachine
 
+import (
+	"testing"
+
+	"github.com/Programming-For-the-Community/net-watch/graphql-api/internal/model"
+)
+
 // Classify reports what a single step of Next did, so callers know whether
 // to open or resolve an incident and whether to send a notification.
 //
@@ -21,9 +27,68 @@ package statemachine
 
 // ----------- Transitions that matter -----------
 // [ ] TestClassify_UpToDownReturnsWentDown
+func TestClassify_UpToDownReturnsWentDown(t *testing.T) {
+	prev := Status{State: model.StateUp}
+	current := Status{State: model.StateDown}
+
+	event, err := Classify(prev, current)
+
+	if err != nil {
+		t.Errorf("Classify(%v, %v) error = %v, want nil", prev, current, err)
+	}
+
+	if event != EventWentDown {
+		t.Errorf("Classify(%v, %v) event = %v, want %v", prev, current, event, EventWentDown)
+	}
+}
+
 // [ ] TestClassify_UnknownToDownReturnsWentDown
+func TestClassify_UnknownToDownReturnsWentDown(t *testing.T) {
+	prev := Status{State: model.StateUnknown}
+	current := Status{State: model.StateDown}
+
+	event, err := Classify(prev, current)
+
+	if err != nil {
+		t.Errorf("Classify(%v, %v) error = %v, want nil", prev, current, err)
+	}
+
+	if event != EventWentDown {
+		t.Errorf("Classify(%v, %v) event = %v, want %v", prev, current, event, EventWentDown)
+	}
+}
+
 // [ ] TestClassify_DownToUpReturnsRecovered
+func TestClassify_DownToUpReturnsRecovered(t *testing.T) {
+	prev := Status{State: model.StateDown}
+	current := Status{State: model.StateUp}
+
+	event, err := Classify(prev, current)
+
+	if err != nil {
+		t.Errorf("Classify(%v, %v) error = %v, want nil", prev, current, err)
+	}
+
+	if event != EventRecovered {
+		t.Errorf("Classify(%v, %v) event = %v, want %v", prev, current, event, EventRecovered)
+	}
+}
+
 // [ ] TestClassify_UnknownToUpReturnsCameUp
+func TestClassify_UnknownToUpReturnsCameUp(t *testing.T) {
+	prev := Status{State: model.StateUnknown}
+	current := Status{State: model.StateUp}
+
+	event, err := Classify(prev, current)
+
+	if err != nil {
+		t.Errorf("Classify(%v, %v) error = %v, want nil", prev, current, err)
+	}
+
+	if event != EventCameUp {
+		t.Errorf("Classify(%v, %v) event = %v, want %v", prev, current, event, EventCameUp)
+	}
+}
 
 // ----------- No transition -----------
 // [ ] TestClassify_UpToUpReturnsNone

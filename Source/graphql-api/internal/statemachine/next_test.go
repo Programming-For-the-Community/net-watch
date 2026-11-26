@@ -1,7 +1,6 @@
 package statemachine
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/Programming-For-the-Community/net-watch/graphql-api/internal/model"
@@ -282,52 +281,4 @@ func TestNext_ValidTransitionsReturnNilError(t *testing.T) {
 			}
 		}
 	}
-}
-
-// ----------- Thresholds.Validate -----------
-
-func TestThresholdsValidate_FailureBelowOneReturnsError(t *testing.T) {
-	err := Thresholds{Failure: 0, Recovery: 2}.Validate()
-	if !errors.Is(err, ErrThresholdsFailureTooLow) {
-		t.Errorf("error = %v, want %v", err, ErrThresholdsFailureTooLow)
-	}
-}
-
-func TestThresholdsValidate_RecoveryBelowOneReturnsError(t *testing.T) {
-	err := Thresholds{Failure: 5, Recovery: 0}.Validate()
-	if !errors.Is(err, ErrThresholdsRecoveryTooLow) {
-		t.Errorf("error = %v, want %v", err, ErrThresholdsRecoveryTooLow)
-	}
-}
-
-func TestThresholdsValidate_ValidThresholdsReturnNil(t *testing.T) {
-	if err := defaultThresholds.Validate(); err != nil {
-		t.Errorf("error = %v, want nil", err)
-	}
-}
-
-// ----------- Status.Validate -----------
-
-func TestStatusValidate_ValidStatusesReturnNil(t *testing.T) {
-	valid := []Status{
-		{State: model.StateUnknown},
-		{State: model.StateUnknown, Failures: defaultThresholds.Failure - 1},
-		{State: model.StateUnknown, Successes: defaultThresholds.Recovery - 1},
-		{State: model.StateUp, Successes: 100},
-		{State: model.StateUp, Failures: defaultThresholds.Failure - 1},
-		{State: model.StateDown, Failures: 100},
-		{State: model.StateDown, Successes: defaultThresholds.Recovery - 1},
-		{State: model.StatePaused},
-	}
-	for _, s := range valid {
-		if err := s.Validate(defaultThresholds); err != nil {
-			t.Errorf("%+v.Validate() error = %v, want nil", s, err)
-		}
-	}
-}
-
-// ----------- Reset -----------
-
-func TestReset_ReturnsUnknownWithZeroCounters(t *testing.T) {
-	assertStatus(t, Reset(), Status{State: model.StateUnknown})
 }

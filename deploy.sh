@@ -29,7 +29,7 @@ unset NETWATCH_SECRET DB_USER DB_PWD
 PRIMARY_DATA_PATH="D:/Projects/.data"
 FALLBACK_DATA_PATH="C:/ProgramData/docker/volumes"
 
-if [ -d "${PRIMARY_DATA_PATH}" ]; then
+if [[ -d "${PRIMARY_DATA_PATH}" ]]; then
   echo "Using primary data path: ${PRIMARY_DATA_PATH}"
   export DATA_PATH="${PRIMARY_DATA_PATH}/net-watch"
 else

@@ -1,5 +1,11 @@
 package statemachine
 
+import (
+	"testing"
+
+	"github.com/Programming-For-the-Community/net-watch/graphql-api/internal/model"
+)
+
 // Pause and Resume change a status in response to a user action. Paused is a
 // stored state (check_status.state = 'paused'); resuming starts the check
 // over from Unknown so stale streaks don't carry across the pause.
@@ -9,8 +15,9 @@ package statemachine
 //	func Pause(s Status) (Status, error)
 //	func Resume(s Status) (Status, error)
 //
-// Resume returns the same value as Reset; the difference is that Resume
-// checks it's being applied to a paused status.
+// Resume returns the same value as Reset (already in pause.go; its test is
+// at the bottom of this file). The difference is that Resume checks it's
+// being applied to a paused status.
 
 // ----------- Pause -----------
 // [ ] TestPause_UpStatusBecomesPaused
@@ -59,3 +66,9 @@ package statemachine
 // - Should pausing/resuming produce events for notifications or the UI?
 //   If so, add EventPaused/EventResumed and return them from Pause/Resume
 //   rather than from Classify.
+
+// ----------- Reset -----------
+
+func TestReset_ReturnsUnknownWithZeroCounters(t *testing.T) {
+	assertStatus(t, Reset(), Status{State: model.StateUnknown})
+}

@@ -1,0 +1,35 @@
+# Dependabot version updates.
+#
+# PRs target dev (not main) so updates flow through the normal
+# dev -> main PR like any other change. Workflows triggered by Dependabot
+# can only read secrets stored under Settings > Secrets > Dependabot.
+#
+# Actions are pinned to full commit SHAs with a "# vX.Y.Z" comment;
+# Dependabot updates both the SHA and the comment.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: monthly
+    # One PR per month covering every action update.
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "ci"
+
+  # Add once the Go module has third-party dependencies (go.sum exists):
+  # - package-ecosystem: gomod
+  #   directory: /Source/graphql-api
+  #   target-branch: dev
+  #   schedule:
+  #     interval: monthly
+  #   groups:
+  #     go-modules:
+  #       patterns:
+  #         - "*"
+  #   commit-message:
+  #     prefix: "deps"
