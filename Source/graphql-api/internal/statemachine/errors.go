@@ -24,3 +24,9 @@ var (
 	ErrInvalidDownStatus             = errors.New("down status cannot have successes at or above the recovery threshold")
 	ErrInvalidUpStatus               = errors.New("up status cannot have failures at or above the failure threshold")
 )
+
+// Classify errors
+var (
+	ErrImpossibleTransition = errors.New("this state transition is not possible via Next")
+	ErrNoStatusProvided     = errors.New("no status provided")
+)

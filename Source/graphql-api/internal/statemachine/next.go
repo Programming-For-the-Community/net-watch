@@ -14,7 +14,7 @@ func Next(s Status, success bool, t Thresholds) (Status, error) {
 	if err := t.Validate(); err != nil {
 		return Status{}, err
 	}
-	if err := s.Validate(t); err != nil {
+	if err := s.ValidWithThresholds(t); err != nil {
 		return Status{}, err
 	}
 

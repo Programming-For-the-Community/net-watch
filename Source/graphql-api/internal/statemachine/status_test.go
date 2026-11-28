@@ -18,7 +18,7 @@ func TestStatusValidate_ValidStatusesReturnNil(t *testing.T) {
 		{State: model.StatePaused},
 	}
 	for _, s := range valid {
-		if err := s.Validate(defaultThresholds); err != nil {
+		if err := s.ValidWithThresholds(defaultThresholds); err != nil {
 			t.Errorf("%+v.Validate() error = %v, want nil", s, err)
 		}
 	}
