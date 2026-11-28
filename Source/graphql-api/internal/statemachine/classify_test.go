@@ -2,7 +2,9 @@ package statemachine
 
 import (
 	"errors"
+
 	"github.com/Programming-For-the-Community/net-watch/graphql-api/internal/model"
+
 	"testing"
 )
 
